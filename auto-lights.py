@@ -5,6 +5,16 @@ import requests
 import json
 
 
+# Global Vars
+firstFrame = None
+lastLightsOn = False
+lightsOn = False
+lastMovementTime = 0
+cam=cv2.VideoCapture(0)
+with open("config.json") as config_file:
+  configs = json.load(config_file)
+
+
 # Functions
 
 def turnOnLights():
@@ -25,16 +35,7 @@ def getLightStatus():
   return light_status_json["state"]["on"]
 
 
-# Getting configs
-with open("config.json") as config_file:
-  configs = json.load(config_file)
 
-# Set up camera
-cam=cv2.VideoCapture(0)
-
-firstFrame = None
-lastLightsOn = False
-lightsOn = False
 
 # Run forever
 while True:
@@ -48,31 +49,30 @@ while True:
     for i in range(30):
       cam.read()
 
-  # only do image processing if lights are off
-  if not lightsOn:
-    print("Looking for movement...")
-    (grabbed, frame) = cam.read()
-    frame = imutils.resize(frame, width=500)
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (21, 21), 0)
+  (grabbed, frame) = cam.read()
+  frame = imutils.resize(frame, width=500)
+  gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+  gray = cv2.GaussianBlur(gray, (21, 21), 0)
 
-    # Load firstFrame if there is none
-    if firstFrame == None:
-      firstFrame = gray
-      continue
+  # Load firstFrame if there is none
+  if firstFrame == None:
+    firstFrame = gray
+    continue
 
-    delta = cv2.absdiff(firstFrame, gray)
-    thresh = cv2.threshold(delta, 25, 255, cv2.THRESH_BINARY)[1]
+  delta = cv2.absdiff(firstFrame, gray)
+  thresh = cv2.threshold(delta, 25, 255, cv2.THRESH_BINARY)[1]
 
-    thresh = cv2.dilate(thresh, None, iterations=2)
-    (cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+  thresh = cv2.dilate(thresh, None, iterations=2)
+  (cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    for c in cnts:
-      if cv2.contourArea(c) >= configs["minArea"]:
+  secSinceMove = int(time.time()) - lastMovementTime
+
+  for c in cnts:
+    if cv2.contourArea(c) >= configs["minArea"]:
+      if not lightsOn and (secSinceMove > configs["idleTime"]):
         turnOnLights()
+      print("Reseting last movement time...")
+      lastMovementTime = int(time.time())
 
-  else:
-    print("Light is on...")
-    time.sleep(1)
 
 cam.release()

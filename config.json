@@ -2,5 +2,6 @@
 	"userId": "MO8InqKZaljp53paMVXS0MTlKx4QEFCOjJNd72i6",
 	"light": "1",
 	"lightBridgeIp": "192.168.1.102",
-	"minArea": 500
+	"minArea": 500,
+	"idleTime": 300
 }
